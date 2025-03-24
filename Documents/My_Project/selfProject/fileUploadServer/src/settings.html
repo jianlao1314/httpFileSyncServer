@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>文件服务设置</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .address-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .address-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background-color: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        .address-text {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .copy-button {
+            padding: 4px 8px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .copy-button:hover {
+            background-color: #0056b3;
+        }
+        .directory-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .directory-path {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .select-button {
+            padding: 8px 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .select-button:hover {
+            background-color: #218838;
+        }
+        .language-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #d4edda;
+            color: #155724;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="section">
+            <div class="section-title">文件服务访问地址</div>
+            <ul class="address-list" id="addressList">
+                <!-- 地址列表将通过 JavaScript 动态填充 -->
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">挂载目录</div>
+            <div class="directory-input">
+                <input type="text" class="directory-path" id="directoryPath" readonly>
+                <button class="select-button" id="selectDirectory">选择目录</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">语言设置</div>
+            <select class="language-select" id="languageSelect">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let currentLanguage = localStorage.getItem('language') || 'zh';
+
+        // 语言配置
+        const translations = {
+            zh: {
+                title: '文件服务设置',
+                networkAddresses: '网络地址',
+                copy: '复制',
+                selectDirectory: '选择上传目录',
+                currentDirectory: '当前目录',
+                language: '语言',
+                status: '状态',
+                copied: '已复制到剪贴板',
+                directoryUpdated: '上传目录已更新',
+                languageUpdated: '语言已更新',
+                selectButton: '选择目录'
+            },
+            en: {
+                title: 'File Service Settings',
+                networkAddresses: 'Network Addresses',
+                copy: 'Copy',
+                selectDirectory: 'Select Upload Directory',
+                currentDirectory: 'Current Directory',
+                language: 'Language',
+                status: 'Status',
+                copied: 'Copied to clipboard',
+                directoryUpdated: 'Upload directory updated',
+                languageUpdated: 'Language updated',
+                selectButton: 'Select Directory'
+            }
+        };
+
+        // 更新界面语言
+        function updateLanguage(lang) {
+            // 更新标题
+            document.title = translations[lang].title;
+
+            // 更新网络地址标题
+            const networkTitle = document.querySelector('.section:nth-child(1) .section-title');
+            if (networkTitle) {
+                networkTitle.textContent = translations[lang].networkAddresses;
+            }
+
+            // 更新复制按钮文本
+            const copyButtons = document.querySelectorAll('.copy-button');
+            copyButtons.forEach(button => {
+                button.textContent = translations[lang].copy;
+            });
+
+            // 更新目录选择部分
+            const directoryTitle = document.querySelector('.section:nth-child(2) .section-title');
+            if (directoryTitle) {
+                directoryTitle.textContent = translations[lang].selectDirectory;
+            }
+
+            // 更新选择目录按钮文本
+            const selectButton = document.getElementById('selectDirectory');
+            if (selectButton) {
+                selectButton.textContent = translations[lang].selectButton;
+            }
+
+            // 更新语言选择部分
+            const languageTitle = document.querySelector('.section:nth-child(3) .section-title');
+            if (languageTitle) {
+                languageTitle.textContent = translations[lang].language;
+            }
+
+            // 更新状态消息
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                if (statusElement.textContent.includes('已复制')) {
+                    statusElement.textContent = translations[lang].copied;
+                } else if (statusElement.textContent.includes('上传目录已更新')) {
+                    statusElement.textContent = translations[lang].directoryUpdated;
+                } else if (statusElement.textContent.includes('语言已更新')) {
+                    statusElement.textContent = translations[lang].languageUpdated;
+                }
+            }
+        }
+
+        // 切换语言
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            updateLanguage(lang);
+        }
+
+        // 获取并显示网络地址
+        async function fetchNetworkAddresses() {
+            try {
+                const response = await fetch('http://localhost:3333/api/network-addresses');
+                const data = await response.json();
+                const addressList = document.getElementById('addressList');
+                addressList.innerHTML = '';
+
+                // 添加本地地址
+                const localItem = document.createElement('li');
+                localItem.className = 'address-item';
+                localItem.innerHTML = `
+                    <span class="address-text">http://${data.local}</span>
+                    <button class="copy-button" onclick="copyAddress('http://${data.local}')">${translations[currentLanguage].copy}</button>
+                `;
+                addressList.appendChild(localItem);
+
+                // 添加网络地址
+                data.network.forEach(address => {
+                    const item = document.createElement('li');
+                    item.className = 'address-item';
+                    item.innerHTML = `
+                        <span class="address-text">http://${address}</span>
+                        <button class="copy-button" onclick="copyAddress('http://${address}')">${translations[currentLanguage].copy}</button>
+                    `;
+                    addressList.appendChild(item);
+                });
+            } catch (error) {
+                console.error('获取网络地址失败:', error);
+            }
+        }
+
+        // 复制地址到剪贴板
+        function copyAddress(address) {
+            navigator.clipboard.writeText(address).then(() => {
+                showStatus(translations[currentLanguage].copied);
+            });
+        }
+
+        // 显示状态消息
+        function showStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 2000);
+        }
+
+        // 更新服务器上的上传目录
+        async function updateServerUploadDir(dir) {
+            try {
+                const response = await fetch('http://localhost:3333/api/set-upload-dir', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ dir })
+                });
+
+                if (response.ok) {
+                    showStatus(translations[currentLanguage].directoryUpdated);
+                } else {
+                    showStatus('目录更新失败');
+                }
+            } catch (error) {
+                console.error('更新目录失败:', error);
+                showStatus('目录更新失败');
+            }
+        }
+
+        // 获取当前上传目录
+        async function getCurrentUploadDir() {
+            try {
+                const currentDir = await ipcRenderer.invoke('get-upload-dir');
+                document.getElementById('directoryPath').value = currentDir;
+            } catch (error) {
+                console.error('获取当前目录失败:', error);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 设置当前语言
+            const languageSelect = document.getElementById('languageSelect');
+            if (languageSelect) {
+                languageSelect.value = currentLanguage;
+                // 添加语言切换事件监听
+                languageSelect.addEventListener('change', (event) => {
+                    changeLanguage(event.target.value);
+                });
+            }
+            
+            // 更新界面语言
+            updateLanguage(currentLanguage);
+            
+            // 获取网络地址
+            fetchNetworkAddresses();
+            
+            // 获取当前上传目录
+            await getCurrentUploadDir();
+
+            // 选择目录按钮事件
+            document.getElementById('selectDirectory').addEventListener('click', async () => {
+                const dir = await ipcRenderer.invoke('select-directory');
+                if (dir) {
+                    document.getElementById('directoryPath').value = dir;
+                    // 更新服务器上的上传目录
+                    await updateServerUploadDir(dir);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
